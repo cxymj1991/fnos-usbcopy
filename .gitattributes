@@ -1,0 +1,15 @@
+# 默认按文本处理，提交时统一 LF
+* text=auto
+
+# shell 脚本与 fpk 打包相关文件强制 LF（目标平台为 Linux/fnOS）
+*.sh text eol=lf
+manifest text eol=lf
+cmd/** text eol=lf
+wizard/** text eol=lf
+config/** text eol=lf
+
+# 二进制
+*.png binary
+*.PNG binary
+*.fpk binary
+*.tgz binary

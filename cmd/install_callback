@@ -1,0 +1,7 @@
+#!/bin/bash
+# 安装后：初始化配置文件（若不存在）
+ETC="${TRIM_PKGETC:-/tmp/fn-usbcopy/etc}"
+mkdir -p "$ETC" 2>/dev/null
+[ -f "$ETC/tasks.json" ] || echo "[]" > "$ETC/tasks.json"
+[ -f "$ETC/settings.json" ] || printf '{"poll_interval":5,"log_retention_days":30,"notify":true}' > "$ETC/settings.json"
+exit 0

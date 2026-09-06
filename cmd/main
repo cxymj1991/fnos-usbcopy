@@ -1,0 +1,48 @@
+#!/bin/bash
+# FnOS 生命周期主脚本：支持 start / stop / status
+set -u
+
+APP_DIR="${TRIM_APPDEST:-$(cd "$(dirname "$0")/../app" && pwd)}"
+PY_BIN="$(command -v python3 || command -v python || echo python3)"
+PID_FILE="${TRIM_PKGVAR:-/tmp/fn-usbcopy/var}/app.pid"
+LOG_FILE="${TRIM_PKGVAR:-/tmp/fn-usbcopy/var}/usbcopy.log"
+
+mkdir -p "$(dirname "$PID_FILE")" 2>/dev/null
+
+case "${1:-}" in
+  start)
+    if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+      exit 0
+    fi
+    cd "$APP_DIR" || { echo "无法进入 $APP_DIR" >&2; exit 1; }
+    nohup "$PY_BIN" "$APP_DIR/usbcopy.py" >>"$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"
+    sleep 1
+    if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+      exit 0
+    fi
+    echo "启动失败，请查看日志: $LOG_FILE" >&2
+    exit 1
+    ;;
+  stop)
+    if [ -f "$PID_FILE" ]; then
+      pid="$(cat "$PID_FILE")"
+      kill "$pid" 2>/dev/null
+      sleep 1
+      kill -9 "$pid" 2>/dev/null
+      rm -f "$PID_FILE"
+    fi
+    pkill -f "usbcopy.py" 2>/dev/null
+    exit 0
+    ;;
+  status)
+    if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+      exit 0
+    fi
+    rm -f "$PID_FILE"
+    exit 3
+    ;;
+  *)
+    exit 1
+    ;;
+esac

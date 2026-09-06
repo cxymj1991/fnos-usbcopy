@@ -1,0 +1,13 @@
+{
+    ".url": {
+        "fn-usbcopy.main": {
+            "title": "USB Copy 同步",
+            "icon": "images/icon-{0}.png",
+            "type": "iframe",
+            "protocol": "http",
+            "port": "8765",
+            "url": "/",
+            "allUsers": true
+        }
+    }
+}

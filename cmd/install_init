@@ -1,0 +1,4 @@
+#!/bin/bash
+# 安装前：确保运行目录存在
+mkdir -p "${TRIM_PKGVAR:-/tmp/fn-usbcopy/var}/logs" "${TRIM_PKGETC:-/tmp/fn-usbcopy/etc}" 2>/dev/null
+exit 0

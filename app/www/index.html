@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USB Copy 同步</title>
+<link rel="stylesheet" href="/static/style.css?v=1.3.8">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">⇄</span>
+    <span class="title">USB Copy 同步</span>
+  </div>
+  <div class="status" id="statusbar">
+    <span class="dot" id="statusdot"></span>
+    <span id="status-text">连接中…</span>
+    <span class="sep">·</span>
+    <span id="device-count">已连接U盘 0</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="tasks">同步任务</button>
+  <button class="tab" data-tab="devices">已连接U盘</button>
+  <button class="tab" data-tab="logs">运行日志</button>
+  <button class="tab" data-tab="settings">设置</button>
+  <button class="btn primary" id="new-task-btn" style="margin-left:auto">+ 新建任务</button>
+</nav>
+
+<main>
+  <!-- 任务 -->
+  <section id="tab-tasks" class="panel active">
+    <div id="task-list" class="task-list"></div>
+    <div id="task-empty" class="empty">还没有同步任务。点击右上角「新建任务」，插入指定U盘后它将自动同步。</div>
+  </section>
+
+  <!-- 设备 -->
+  <section id="tab-devices" class="panel">
+    <p class="hint">当前飞牛系统已挂载的可移动USB设备。点击「用此U盘新建任务」可直接可视化创建同步任务，无需手动抄写 UUID。</p>
+    <div id="device-list" class="device-list"></div>
+    <div id="device-empty" class="empty">未检测到已挂载的U盘。</div>
+  </section>
+
+  <!-- 日志 -->
+  <section id="tab-logs" class="panel">
+    <div class="toolbar">
+      <button class="btn" id="refresh-logs">刷新</button>
+      <button class="btn" id="view-full-log">查看完整日志</button>
+      <span class="hint">页面显示最近 2000 条（内存），完整日志已全部保存到文件，可点「查看完整日志」浏览或下载。开始（▶）与结束（■）会记录完整时间和耗时，变更明细不再逐条重复时间。同步出错时，出错文件路径清单显示在该次同步最上方并红色高亮。</span>
+    </div>
+    <div id="log-list" class="log-list"></div>
+  </section>
+
+  <!-- 设置 -->
+  <section id="tab-settings" class="panel">
+    <div class="form-row">
+      <label>检测轮询间隔（秒）</label>
+      <input type="number" id="set-poll" min="2" max="60" value="5">
+    </div>
+    <div class="form-row">
+      <label>日志保留天数</label>
+      <input type="number" id="set-retention" min="1" max="365" value="30">
+    </div>
+    <div class="form-row">
+      <label>同步日志记录文件明细</label>
+      <select id="set-log-detail"><option value="true">记录每个变更文件</option><option value="false">只记录汇总</option></select>
+      <div class="hint">开启后，同步完成时会在日志末尾集中列出「复制/冲突重命名/删除」的文件明细，便于核对同步内容。</div>
+    </div>
+
+    <h3 class="set-section">手机推送（同步开始 / 完成时推送微信 / 邮件到手机）</h3>
+    <div class="form-row switch-row">
+      <label>启用手机推送</label>
+      <input type="checkbox" id="set-push-enabled">
+      <div class="hint">总开关。关闭后不再向手机推送任何消息。</div>
+    </div>
+    <div class="form-row switch-row">
+      <label>同步开始时推送</label>
+      <input type="checkbox" id="set-notify-start">
+      <div class="hint">每次同步「开始」时推送一条通知（默认关闭，避免频繁打扰）。</div>
+    </div>
+    <div class="form-row switch-row">
+      <label>同步完成时推送</label>
+      <input type="checkbox" id="set-notify-finish">
+      <div class="hint">同步成功、失败或存在错误时推送结果通知，并附带开始/结束时间与耗时（默认开启）。</div>
+    </div>
+    <div class="form-row">
+      <label>推送渠道（可多选）</label>
+      <div class="chk-group" id="push-channels">
+        <label class="chk"><input type="checkbox" class="push-ch" value="pushplus"> PushPlus（微信）</label>
+        <label class="chk"><input type="checkbox" class="push-ch" value="smtp"> SMTP 邮件</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>PushPlus Token</label>
+      <input type="text" id="set-pushplus-token" placeholder="www.pushplus.plus 微信扫码注册获取">
+    </div>
+    <div class="form-row">
+      <label>SMTP 服务器</label>
+      <input type="text" id="set-smtp-host" placeholder="smtp.qq.com / smtp.163.com">
+    </div>
+    <div class="form-row">
+      <label>SMTP 端口</label>
+      <input type="number" id="set-smtp-port" value="465" min="1" max="65535">
+      <div class="hint">465=SSL（推荐）；587=STARTTLS。</div>
+    </div>
+    <div class="form-row">
+      <label>SMTP 账号</label>
+      <input type="text" id="set-smtp-user" placeholder="发件邮箱地址">
+    </div>
+    <div class="form-row">
+      <label>SMTP 密码 / 授权码</label>
+      <input type="password" id="set-smtp-pass" placeholder="邮箱的授权码（非登录密码）">
+    </div>
+    <div class="form-row">
+      <label>收件人（多个用英文逗号分隔）</label>
+      <input type="text" id="set-smtp-to" placeholder="yourphone@example.com">
+    </div>
+    <div class="form-row">
+      <button class="btn" id="test-push" type="button">发送测试推送</button>
+      <div class="hint">先填好上方渠道配置（可先不点保存），点此立即向手机发一条测试消息，结果会显示在下方。</div>
+      <div id="push-test-result" class="hint"></div>
+    </div>
+
+    <button class="btn primary" id="save-settings">保存设置</button>
+    <p class="hint">说明：本服务以 root 权限运行，可读取U盘并写入任意NAS文件夹。同步开始/完成/失败的通知通过上方手机推送渠道发送（微信 PushPlus / 邮件），「开始」与「完成」两个开关相互独立，可只开其中一个。</p>
+  </section>
+</main>
+
+<!-- 任务编辑弹窗 -->
+<div class="modal-mask" id="modal-mask">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="modal-title">新建任务</span>
+      <button class="icon-btn" id="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>任务名称</label>
+        <input type="text" id="f-name" placeholder="例如：相机SD卡备份">
+      </div>
+
+      <div class="form-row">
+        <label>识别U盘（可视化选择当前已插入的U盘）</label>
+        <select id="f-device">
+          <option value="">— 任意U盘 —</option>
+        </select>
+        <div class="hint" id="f-device-hint">未检测到已插入的U盘。插入U盘后刷新本页即可选择；或保持「任意U盘」。</div>
+      </div>
+      <div class="form-row">
+        <label>以其何种标识识别（选定U盘后自动填充）</label>
+        <select id="f-match-field">
+          <option value="uuid">UUID（最稳定）</option>
+          <option value="label">卷标</option>
+          <option value="serial">序列号</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>文件夹配对（U盘文件夹 → NAS 文件夹，可添加多对）</label>
+        <div id="folder-pairs" class="folder-pairs"></div>
+        <button class="btn" id="add-pair" type="button">+ 添加文件夹配对</button>
+        <div class="hint">仿 FreeFileSync：左侧为 U 盘中的某个文件夹，右侧为 NAS 中对应的目标文件夹。</div>
+      </div>
+
+      <div class="form-row">
+        <label>复制模式</label>
+        <select id="f-mode">
+          <option value="incremental">增量（仅新增/修改，不删除）</option>
+          <option value="mirror">镜像（完全同步，删除多余文件）</option>
+          <option value="multiversion">多版本（每次新建时间目录完整备份）</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>文件过滤（逗号分隔）</label>
+        <input type="text" id="f-include" placeholder="仅包含，例如 *.jpg,*.png（留空=全部）">
+      </div>
+      <div class="form-row">
+        <label>排除文件（逗号分隔）</label>
+        <input type="text" id="f-exclude" placeholder="例如 *.tmp,Thumbs.db,.Trash-1000">
+      </div>
+
+      <div class="form-row">
+        <label>同名冲突处理</label>
+        <select id="f-conflict">
+          <option value="overwrite">覆盖</option>
+          <option value="skip">跳过</option>
+          <option value="rename">重命名保留两者</option>
+        </select>
+      </div>
+
+      <div class="form-row switch-row">
+        <label>完成后自动弹出U盘</label>
+        <input type="checkbox" id="f-eject">
+      </div>
+      <div class="form-row switch-row">
+        <label>启用该任务</label>
+        <input type="checkbox" id="f-enabled" checked>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="modal-cancel">取消</button>
+      <button class="btn primary" id="modal-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 文件夹选择器（二级弹窗） -->
+<div class="modal-mask" id="picker-mask">
+  <div class="modal picker">
+    <div class="modal-head">
+      <span id="picker-title">选择文件夹</span>
+      <button class="icon-btn" id="picker-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="picker-bar">
+        <button class="btn" id="picker-up" type="button">↑ 上级</button>
+        <span id="picker-path" class="picker-path"></span>
+      </div>
+      <div id="picker-list" class="picker-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="picker-cancel" type="button">取消</button>
+      <button class="btn primary" id="picker-ok" type="button">选择此文件夹</button>
+    </div>
+  </div>
+</div>
+
+<!-- 完整日志弹窗 -->
+<div class="modal-mask" id="full-log-mask">
+  <div class="modal wide">
+    <div class="modal-head">
+      <span>完整日志（已保存到文件的全部记录）</span>
+      <button class="icon-btn" id="full-log-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="toolbar">
+        <button class="btn" id="full-log-download" type="button">下载日志文件</button>
+        <span class="hint" id="full-log-info"></span>
+      </div>
+      <div id="full-log-content" class="full-log-content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/app.js?v=1.3.8"></script>
+</body>
+</html>
