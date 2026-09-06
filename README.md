@@ -23,7 +23,11 @@
 
 ## 安装
 
-### 方式一：使用本仓库 build.sh 生成 fpk 后安装
+### 方式一：直接下载安装包（推荐）
+
+到 [Releases](https://github.com/cxymj1991/fnos-usbcopy/releases) 页面下载最新的 `fn-usbcopy-<版本>.fpk`，在飞牛「应用中心 → 手动安装 / 上传」中选择安装即可。
+
+### 方式二：使用本仓库 build.sh 生成 fpk 后安装
 
 ```bash
 cd fn-usbcopy
